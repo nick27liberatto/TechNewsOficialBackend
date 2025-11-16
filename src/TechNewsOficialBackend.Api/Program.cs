@@ -1,4 +1,7 @@
+using Microsoft.IdentityModel.Tokens;
 using Supabase;
+using System.Security.Claims;
+using System.Text;
 using TechNewsOficialBackend.Api.Contracts;
 using TechNewsOficialBackend.Api.Models;
 
@@ -10,18 +13,28 @@ builder.Services.AddOpenApi();
 
 builder.Configuration.AddEnvironmentVariables();
 
+builder.Services.AddAuthorization();
+
+builder.Services.AddAuthentication().AddJwtBearer(options =>
+{
+    var supabaseAudience = builder.Configuration["AUTHENTICATION_AUDIENCE"] ?? builder.Configuration["Authentication:ValidAudience"];
+    var supabaseIssuer = builder.Configuration["AUTHENTICATION_ISSUER"] ?? builder.Configuration["Authentication:ValidIssuer"];
+    var jwtSecret = builder.Configuration["AUTHENTICATION_JWT_SECRET"] ?? builder.Configuration["Authentication:JwtSecret"];
+    var bytes = Encoding.UTF8.GetBytes(jwtSecret);
+
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(bytes),
+        ValidAudience = supabaseAudience,
+        ValidIssuer = supabaseIssuer,
+    };
+});
+
 builder.Services.AddScoped<Client>(_ =>
 {
-    // Obtendo as variáveis de ambiente
-    var supabaseUrl = builder.Configuration["SUPABASE_URL"];
-    var supabaseKey = builder.Configuration["SUPABASE_KEY"];
-
-    // Verificação simples (opcional)
-    if (string.IsNullOrEmpty(supabaseUrl) || string.IsNullOrEmpty(supabaseKey))
-    {
-        supabaseUrl = builder.Configuration["Supabase:Url"];
-        supabaseKey = builder.Configuration["Supabase:Key"];
-    }
+    var supabaseUrl = builder.Configuration["SUPABASE_URL"] ?? builder.Configuration["Supabase:Url"];
+    var supabaseKey = builder.Configuration["SUPABASE_KEY"] ?? builder.Configuration["Supabase:Key"];
 
     var supaOptions = new SupabaseOptions
     {
@@ -39,6 +52,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.MapGet("/user", (ClaimsPrincipal principal) =>
+{
+    var claims = principal.Claims.ToDictionary(c => c.Type, c => c.Value);
+    return Results.Ok(claims);
+})
+.RequireAuthorization();
+
 app.MapGet("/ping", () =>
 {
     var ping = new Ping
@@ -49,22 +69,21 @@ app.MapGet("/ping", () =>
     return Results.Ok(ping);
 });
 
-app.MapPost("/newsletter", async (
-    NewsletterRequest request,
-    Client client) =>
+app.MapGet("/newsletter", async (Client client) =>
 {
-    var newsletter = new Newsletter
+    var response = await client
+         .From<Newsletter>()
+         .Get();
+
+    var newsletters = response.Models.Select(newsletter => new NewsletterResponse
     {
-        Name = request.Name,
-        Description = request.Description,
-        CreatedAt = DateTime.Now
-    };
+        Id = newsletter.Id,
+        Name = newsletter.Name,
+        Description = newsletter.Description,
+        CreatedAt = newsletter.CreatedAt
+    });
 
-    var response = await client.From<Newsletter>().Insert(newsletter);
-
-    var newNewsletter = response.Models.First();
-
-    return Results.Ok(newNewsletter.Id);
+    return Results.Ok(newsletters);
 });
 
 app.MapGet("/newsletter/{id}", async (int id, Client client) =>
@@ -92,6 +111,25 @@ app.MapGet("/newsletter/{id}", async (int id, Client client) =>
     return Results.Ok(newsletterResponse);
 });
 
+app.MapPost("/newsletter", async (
+    NewsletterRequest request,
+    Client client) =>
+{
+    var newsletter = new Newsletter
+    {
+        Name = request.Name,
+        Description = request.Description,
+        CreatedAt = DateTime.Now
+    };
+
+    var response = await client.From<Newsletter>().Insert(newsletter);
+
+    var newNewsletter = response.Models.First();
+
+    return Results.Ok(newNewsletter.Id);
+})
+.RequireAuthorization();
+
 app.MapPut("/newsletter/{id}", async (int id, NewsletterRequest request, Client client) =>
 {
     var newsletters = await client
@@ -115,24 +153,8 @@ app.MapPut("/newsletter/{id}", async (int id, NewsletterRequest request, Client 
         .Update(newsletter);
 
     return Results.Ok();
-});
-
-app.MapGet("/newsletter", async (Client client) =>
-{
-    var response = await client
-         .From<Newsletter>()
-         .Get();
-
-    var newsletters = response.Models.Select(newsletter => new NewsletterResponse
-    {
-        Id = newsletter.Id,
-        Name = newsletter.Name,
-        Description = newsletter.Description,
-        CreatedAt = newsletter.CreatedAt
-    });
-
-    return Results.Ok(newsletters);
-});
+})
+.RequireAuthorization();
 
 app.MapDelete("/newsletter/{id}", async (int id, Client client) =>
 {
@@ -142,7 +164,8 @@ app.MapDelete("/newsletter/{id}", async (int id, Client client) =>
         .Delete();
 
     return Results.NoContent();
-});
+})
+.RequireAuthorization();
 
 app.UseAuthorization();
 
