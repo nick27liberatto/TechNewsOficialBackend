@@ -8,15 +8,27 @@ builder.Services.AddControllers();
 
 builder.Services.AddOpenApi();
 
+builder.Configuration.AddEnvironmentVariables();
+
 builder.Services.AddScoped<Client>(_ =>
 {
-    var supabaseUrl = builder.Configuration["Supabase:Url"];
-    var supabaseKey = builder.Configuration["Supabase:Key"];
+    // Obtendo as variáveis de ambiente
+    var supabaseUrl = builder.Configuration["SUPABASE_URL"];
+    var supabaseKey = builder.Configuration["SUPABASE_KEY"];
+
+    // Verificação simples (opcional)
+    if (string.IsNullOrEmpty(supabaseUrl) || string.IsNullOrEmpty(supabaseKey))
+    {
+        supabaseUrl = builder.Configuration["Supabase:Url"];
+        supabaseKey = builder.Configuration["Supabase:Key"];
+    }
+
     var supaOptions = new SupabaseOptions
     {
         AutoConnectRealtime = true,
         AutoRefreshToken = true
     };
+
     return new Client(supabaseUrl, supabaseKey, supaOptions);
 });
 
