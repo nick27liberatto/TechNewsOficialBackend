@@ -1,6 +1,6 @@
-﻿namespace TechNewsOficialBackend.Api.Contracts
+﻿namespace TechNewsOficialBackend.Api.Models
 {
-    public class NewsletterResponse
+    public class Newsletter
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
