@@ -6,4 +6,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="Mapping\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TechNewsOficialBackend.Application\TechNewsOficialBackend.Application.csproj" />
+    <ProjectReference Include="..\TechNewsOficialBackend.Domain\TechNewsOficialBackend.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

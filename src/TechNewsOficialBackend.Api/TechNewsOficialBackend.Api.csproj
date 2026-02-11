@@ -9,9 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.11" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.2" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+    <PackageReference Include="MediatR" Version="14.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TechNewsOficialBackend.Application\TechNewsOficialBackend.Application.csproj" />
+    <ProjectReference Include="..\TechNewsOficialBackend.Infrastructure\TechNewsOficialBackend.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
